@@ -25,7 +25,6 @@
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
   }
-  body.locked { overflow: hidden; }
   header {
     position: sticky; top: 0; z-index: 10;
     background: var(--bg);
@@ -54,10 +53,6 @@
     display: flex; justify-content: space-between; align-items: center;
   }
   .progress-text .count { color: var(--text); font-variant-numeric: tabular-nums; }
-  .sync-indicator { font-size: 11px; color: var(--text-dim); margin-left: 8px; }
-  .sync-indicator.synced { color: var(--done); }
-  .sync-indicator.syncing { color: var(--warn); }
-  .sync-indicator.error { color: var(--critical); }
   .tabs {
     display: flex; gap: 6px; overflow-x: auto;
     padding: 10px 16px 8px;
@@ -87,16 +82,7 @@
     border-color: var(--accent);
     font-weight: 600;
   }
-  .tab .dot {
-    display: inline-block;
-    width: 6px; height: 6px;
-    border-radius: 50%;
-    background: var(--done);
-    margin-right: 5px;
-    vertical-align: middle;
-  }
   main { padding: 12px 16px 100px; max-width: 760px; margin: 0 auto; }
-  .phase-block { margin-bottom: 28px; }
   .phase-header {
     margin: 18px 0 6px;
     font-size: 11px;
@@ -205,81 +191,6 @@
   }
   .legend strong { color: var(--text); }
   .legend .star { color: var(--critical); margin: 0 2px; }
-  /* ======= AUTH OVERLAY ======= */
-  .auth-overlay {
-    position: fixed; inset: 0;
-    background: rgba(15, 17, 23, 0.96);
-    backdrop-filter: blur(6px);
-    z-index: 100;
-    display: flex; align-items: center; justify-content: center;
-    padding: 20px;
-  }
-  .auth-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    padding: 28px 24px;
-    max-width: 380px; width: 100%;
-    text-align: left;
-  }
-  .auth-card h2 { margin: 0 0 4px; font-size: 18px; }
-  .auth-card p { color: var(--text-dim); font-size: 13px; margin: 6px 0 16px; }
-  .auth-card .email-display {
-    background: var(--surface-2);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 10px 12px;
-    font-size: 13px;
-    color: var(--text);
-    margin-bottom: 14px;
-    word-break: break-all;
-  }
-  .auth-card input {
-    width: 100%;
-    padding: 12px 14px;
-    background: var(--surface-2);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    color: var(--text);
-    font-size: 16px;
-    font-family: ui-monospace, "SF Mono", monospace;
-    letter-spacing: 4px;
-    text-align: center;
-    margin-bottom: 12px;
-  }
-  .auth-card input:focus { outline: none; border-color: var(--accent); }
-  .auth-card button {
-    width: 100%;
-    padding: 12px;
-    background: var(--accent);
-    color: #0c1220;
-    border: none;
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: opacity 0.15s;
-  }
-  .auth-card button:hover { opacity: 0.92; }
-  .auth-card button:disabled { opacity: 0.5; cursor: not-allowed; }
-  .auth-card .secondary {
-    background: transparent;
-    color: var(--text-dim);
-    border: 1px solid var(--border);
-    margin-top: 8px;
-  }
-  .auth-status {
-    margin-top: 12px;
-    padding: 10px;
-    border-radius: 6px;
-    font-size: 12px;
-    text-align: center;
-  }
-  .auth-status.error { background: rgba(248, 113, 113, 0.1); color: var(--critical); }
-  .auth-status.success { background: rgba(74, 222, 128, 0.1); color: var(--done); }
-  .auth-status.info { background: rgba(110, 168, 255, 0.1); color: var(--accent); }
-  .who { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
-  .item.checked .who { display: inline; }
   @media (min-width: 720px) {
     .tabs { top: 78px; }
     h1 { font-size: 20px; }
@@ -288,36 +199,13 @@
   }
 </style>
 </head>
-<body class="locked">
+<body>
 
-<!-- ============ AUTH OVERLAY ============ -->
-<div class="auth-overlay" id="authOverlay">
-  <div class="auth-card">
-    <h2 id="authTitle">AHP Clinic Checklist</h2>
-    <p id="authDesc">Send a one-time login code to the team email.</p>
-
-    <div id="authStep1">
-      <div class="email-display">chewzhiweisg@gmail.com</div>
-      <button id="sendCodeBtn">Send login code</button>
-    </div>
-
-    <div id="authStep2" style="display:none;">
-      <p>Enter the 6-digit code sent to <strong>chewzhiweisg@gmail.com</strong></p>
-      <input id="otpInput" type="text" inputmode="numeric" maxlength="6" placeholder="000000" autocomplete="one-time-code" />
-      <button id="verifyBtn">Verify and continue</button>
-      <button id="resendBtn" class="secondary">Send another code</button>
-    </div>
-
-    <div class="auth-status" id="authStatus" style="display:none;"></div>
-  </div>
-</div>
-
-<!-- ============ MAIN APP ============ -->
 <header>
   <h1>AHP Clinic Procurement <span class="sub">— Pre-Inspection Buy List</span></h1>
   <div class="progress-wrap"><div class="progress-bar" id="progressBar"></div></div>
   <div class="progress-text">
-    <span><span class="count" id="progressCount">0 / 0</span> items checked <span class="sync-indicator" id="syncIndicator">offline</span></span>
+    <span><span class="count" id="progressCount">0 / 0</span> items checked</span>
     <span id="progressPct">0%</span>
   </div>
 </header>
@@ -326,28 +214,17 @@
 
 <main>
   <div class="legend">
-    <strong>Synced across devices</strong> &nbsp;·&nbsp; <span class="star">⭐</span> = inspection-critical &nbsp;·&nbsp; tap a row to tick &nbsp;·&nbsp; updates appear in real-time
+    <strong>Local-only checklist</strong> &nbsp;·&nbsp; ticks save in this browser &nbsp;·&nbsp; <span class="star">⭐</span> = inspection-critical &nbsp;·&nbsp; tap a row to tick
   </div>
   <div id="list"></div>
 </main>
 
 <div class="toolbar">
   <button id="exportBtn">Export</button>
-  <button id="logoutBtn" class="danger">Sign out</button>
+  <button id="resetBtn" class="danger">Reset</button>
 </div>
 
-<script type="module">
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const SUPABASE_URL  = "https://geheirnfbhqnhrjmrrax.supabase.co";
-const SUPABASE_KEY  = "sb_publishable_gA4Ag-16NUpoObMUqBU4RA_Xe0BrRwM";
-const TEAM_EMAIL    = "chewzhiweisg@gmail.com";
-
-const supa = createClient(SUPABASE_URL, SUPABASE_KEY, {
-  auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false }
-});
-
-// ============ ITEMS DATA ============
+<script>
 const ITEMS = [
   // PHASE 1
   { phase: "1", phaseLabel: "Phase 1 — This week (long lead time)", section: "Emergency equipment (HSA-registered)", label: "AED with adult + paediatric pads, spare battery", qty: "×1", critical: true },
@@ -558,127 +435,19 @@ function slug(s) {
 }
 ITEMS.forEach((it, i) => { it.id = `${it.phase}-${slug(it.label)}-${i}`; });
 
-// ============ STATE ============
-let checks = new Map();         // item_id -> { checked_by, checked_at }
+const STORAGE_KEY = 'ahp-clinic-checklist-v1';
+let state = {};
+try { state = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); } catch (e) { state = {}; }
 let activeFilter = 'all';
-let realtimeChannel = null;
 
-// ============ AUTH UI ============
-const $ = (id) => document.getElementById(id);
-const overlay = $('authOverlay');
-
-function showAuthStatus(text, kind='info') {
-  const el = $('authStatus');
-  el.textContent = text;
-  el.className = 'auth-status ' + kind;
-  el.style.display = 'block';
-}
-function hideAuthStatus() { $('authStatus').style.display = 'none'; }
-
-$('sendCodeBtn').onclick = async () => {
-  $('sendCodeBtn').disabled = true;
-  showAuthStatus('Sending login code…', 'info');
-  const { error } = await supa.auth.signInWithOtp({
-    email: TEAM_EMAIL,
-    options: { shouldCreateUser: true }
-  });
-  $('sendCodeBtn').disabled = false;
-  if (error) { showAuthStatus('Error: ' + error.message, 'error'); return; }
-  $('authStep1').style.display = 'none';
-  $('authStep2').style.display = 'block';
-  showAuthStatus('Code sent. Check the inbox.', 'success');
-  setTimeout(() => $('otpInput').focus(), 100);
-};
-
-$('verifyBtn').onclick = async () => {
-  const token = $('otpInput').value.trim();
-  if (token.length < 6) { showAuthStatus('Enter the 6-digit code.', 'error'); return; }
-  $('verifyBtn').disabled = true;
-  showAuthStatus('Verifying…', 'info');
-  const { error } = await supa.auth.verifyOtp({ email: TEAM_EMAIL, token, type: 'email' });
-  $('verifyBtn').disabled = false;
-  if (error) { showAuthStatus('Invalid or expired. Try again.', 'error'); return; }
-  hideAuthStatus();
-  hideAuthOverlay();
-  await onAuthed();
-};
-
-$('resendBtn').onclick = () => {
-  $('authStep2').style.display = 'none';
-  $('authStep1').style.display = 'block';
-  hideAuthStatus();
-};
-
-$('logoutBtn').onclick = async () => {
-  await supa.auth.signOut();
-  if (realtimeChannel) await supa.removeChannel(realtimeChannel);
-  checks.clear();
-  showAuthOverlay();
-};
-
-function showAuthOverlay() { overlay.style.display = 'flex'; document.body.classList.add('locked'); }
-function hideAuthOverlay() { overlay.style.display = 'none'; document.body.classList.remove('locked'); }
-
-// ============ DATA ============
-function setSync(text, kind) {
-  const el = $('syncIndicator');
-  el.textContent = text;
-  el.className = 'sync-indicator ' + (kind || '');
-}
-
-async function loadChecks() {
-  setSync('syncing…', 'syncing');
-  const { data, error } = await supa.from('clinic_checklist_checks').select('*');
-  if (error) { setSync('error', 'error'); console.error(error); return; }
-  checks = new Map(data.map(r => [r.item_id, { checked_by: r.checked_by, checked_at: r.checked_at }]));
-  setSync('synced', 'synced');
-}
-
-async function toggleItem(itemId) {
-  const wasChecked = checks.has(itemId);
-  setSync('saving…', 'syncing');
-  if (wasChecked) {
-    checks.delete(itemId);
-    renderAll();
-    const { error } = await supa.from('clinic_checklist_checks').delete().eq('item_id', itemId);
-    if (error) { setSync('error', 'error'); console.error(error); return; }
-  } else {
-    const session = await supa.auth.getSession();
-    const email = session.data.session?.user?.email || 'unknown';
-    checks.set(itemId, { checked_by: email, checked_at: new Date().toISOString() });
-    renderAll();
-    const { error } = await supa.from('clinic_checklist_checks').upsert({
-      item_id: itemId, checked_by: email, checked_at: new Date().toISOString()
-    });
-    if (error) { setSync('error', 'error'); console.error(error); return; }
-  }
-  setSync('synced', 'synced');
-}
-
-function subscribeRealtime() {
-  if (realtimeChannel) supa.removeChannel(realtimeChannel);
-  realtimeChannel = supa.channel('clinic-checks')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'clinic_checklist_checks' }, (payload) => {
-      if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
-        checks.set(payload.new.item_id, { checked_by: payload.new.checked_by, checked_at: payload.new.checked_at });
-      } else if (payload.eventType === 'DELETE') {
-        checks.delete(payload.old.item_id);
-      }
-      renderAll();
-    })
-    .subscribe();
-}
-
-// ============ RENDER ============
-function counts() {
-  const total = ITEMS.length;
-  const checked = ITEMS.filter(i => checks.has(i.id)).length;
-  return { total, checked };
-}
+function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+function counts() { return { total: ITEMS.length, checked: ITEMS.filter(i => state[i.id]).length }; }
 function phaseCounts(phase) {
   const items = ITEMS.filter(i => i.phase === phase);
-  return { total: items.length, checked: items.filter(i => checks.has(i.id)).length };
+  return { total: items.length, checked: items.filter(i => state[i.id]).length };
 }
+
+const $ = (id) => document.getElementById(id);
 
 function renderProgress() {
   const { total, checked } = counts();
@@ -726,7 +495,7 @@ function renderList() {
   list.innerHTML = '';
   let visible = ITEMS;
   if (activeFilter === 'critical') visible = ITEMS.filter(i => i.critical);
-  else if (activeFilter === 'unchecked') visible = ITEMS.filter(i => !checks.has(i.id));
+  else if (activeFilter === 'unchecked') visible = ITEMS.filter(i => !state[i.id]);
   else if (activeFilter !== 'all') visible = ITEMS.filter(i => i.phase === activeFilter);
 
   if (!visible.length) {
@@ -754,9 +523,9 @@ function renderList() {
       list.appendChild(st);
       lastSection = it.section;
     }
-    const isChecked = checks.has(it.id);
+    const checked = !!state[it.id];
     const row = document.createElement('div');
-    row.className = 'item' + (isChecked ? ' checked' : '') + (it.critical ? ' critical' : '');
+    row.className = 'item' + (checked ? ' checked' : '') + (it.critical ? ' critical' : '');
     row.innerHTML = `
       <div class="checkbox"></div>
       <div class="item-body">
@@ -764,18 +533,23 @@ function renderList() {
         <span class="qty">${escapeHtml(it.qty)}</span>
       </div>
     `;
-    row.onclick = () => toggleItem(it.id);
+    row.onclick = () => {
+      if (state[it.id]) delete state[it.id]; else state[it.id] = true;
+      save();
+      renderAll();
+    };
     list.appendChild(row);
   });
 }
 
-function renderAll() {
-  renderProgress();
-  renderTabs();
-  renderList();
-}
+function renderAll() { renderProgress(); renderTabs(); renderList(); }
 
-// ============ EXPORT ============
+$('resetBtn').onclick = () => {
+  if (confirm('Reset all ticks? This cannot be undone.')) {
+    state = {}; save(); renderAll();
+  }
+};
+
 $('exportBtn').onclick = () => {
   const { total, checked } = counts();
   const lines = [
@@ -793,7 +567,7 @@ $('exportBtn').onclick = () => {
       lines.push(''); lines.push('### ' + it.section);
       lastSection = it.section;
     }
-    const box = checks.has(it.id) ? '[x]' : '[ ]';
+    const box = state[it.id] ? '[x]' : '[ ]';
     const star = it.critical ? ' ⭐' : '';
     lines.push(`- ${box} ${it.label} — ${it.qty}${star}`);
   });
@@ -806,26 +580,7 @@ $('exportBtn').onclick = () => {
   URL.revokeObjectURL(url);
 };
 
-// ============ BOOT ============
-async function onAuthed() {
-  await loadChecks();
-  subscribeRealtime();
-  renderAll();
-}
-
-(async () => {
-  renderTabs(); renderList(); renderProgress();
-  const { data: { session } } = await supa.auth.getSession();
-  if (session) {
-    hideAuthOverlay();
-    await onAuthed();
-  } else {
-    showAuthOverlay();
-  }
-  supa.auth.onAuthStateChange(async (event, sess) => {
-    if (event === 'SIGNED_OUT') showAuthOverlay();
-  });
-})();
+renderAll();
 </script>
 </body>
 </html>

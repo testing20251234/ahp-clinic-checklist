@@ -53,6 +53,10 @@
     display: flex; justify-content: space-between; align-items: center;
   }
   .progress-text .count { color: var(--text); font-variant-numeric: tabular-nums; }
+  .sync-indicator { font-size: 11px; margin-left: 8px; color: var(--text-dim); }
+  .sync-indicator.synced { color: var(--done); }
+  .sync-indicator.syncing { color: var(--warn); }
+  .sync-indicator.error { color: var(--critical); }
   .tabs {
     display: flex; gap: 6px; overflow-x: auto;
     padding: 10px 16px 8px;
@@ -205,7 +209,7 @@
   <h1>AHP Clinic Procurement <span class="sub">— Pre-Inspection Buy List</span></h1>
   <div class="progress-wrap"><div class="progress-bar" id="progressBar"></div></div>
   <div class="progress-text">
-    <span><span class="count" id="progressCount">0 / 0</span> items checked</span>
+    <span><span class="count" id="progressCount">0 / 0</span> items checked <span class="sync-indicator" id="syncIndicator">connecting…</span></span>
     <span id="progressPct">0%</span>
   </div>
 </header>
@@ -214,7 +218,7 @@
 
 <main>
   <div class="legend">
-    <strong>Local-only checklist</strong> &nbsp;·&nbsp; ticks save in this browser &nbsp;·&nbsp; <span class="star">⭐</span> = inspection-critical &nbsp;·&nbsp; tap a row to tick
+    <strong>Synced across devices</strong> &nbsp;·&nbsp; ticks sync in real-time &nbsp;·&nbsp; <span class="star">⭐</span> = inspection-critical &nbsp;·&nbsp; tap a row to tick
   </div>
   <div id="list"></div>
 </main>
@@ -224,7 +228,13 @@
   <button id="resetBtn" class="danger">Reset</button>
 </div>
 
-<script>
+<script type="module">
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const SUPABASE_URL = "https://geheirnfbhqnhrjmrrax.supabase.co";
+const SUPABASE_KEY = "sb_publishable_gA4Ag-16NUpoObMUqBU4RA_Xe0BrRwM";
+const supa = createClient(SUPABASE_URL, SUPABASE_KEY);
+
 const ITEMS = [
   // PHASE 1
   { phase: "1", phaseLabel: "Phase 1 — This week (long lead time)", section: "Emergency equipment (HSA-registered)", label: "AED with adult + paediatric pads, spare battery", qty: "×1", critical: true },
@@ -435,19 +445,64 @@ function slug(s) {
 }
 ITEMS.forEach((it, i) => { it.id = `${it.phase}-${slug(it.label)}-${i}`; });
 
-const STORAGE_KEY = 'ahp-clinic-checklist-v1';
 let state = {};
-try { state = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); } catch (e) { state = {}; }
 let activeFilter = 'all';
 
-function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+const $ = (id) => document.getElementById(id);
+
+function setSync(text, kind) {
+  const el = $('syncIndicator');
+  el.textContent = text;
+  el.className = 'sync-indicator ' + (kind || '');
+}
+
+async function loadFromSupabase() {
+  setSync('syncing…', 'syncing');
+  const { data, error } = await supa.from('clinic_checklist_checks').select('item_id');
+  if (error) { setSync('offline', 'error'); console.error(error); return; }
+  state = {};
+  data.forEach(r => { state[r.item_id] = true; });
+  setSync('synced', 'synced');
+}
+
+async function toggleItem(itemId) {
+  const wasChecked = !!state[itemId];
+  if (wasChecked) {
+    delete state[itemId];
+    renderAll();
+    setSync('saving…', 'syncing');
+    const { error } = await supa.from('clinic_checklist_checks').delete().eq('item_id', itemId);
+    if (error) { setSync('error', 'error'); console.error(error); state[itemId] = true; renderAll(); return; }
+  } else {
+    state[itemId] = true;
+    renderAll();
+    setSync('saving…', 'syncing');
+    const { error } = await supa.from('clinic_checklist_checks').upsert({
+      item_id: itemId, checked_at: new Date().toISOString()
+    });
+    if (error) { setSync('error', 'error'); console.error(error); delete state[itemId]; renderAll(); return; }
+  }
+  setSync('synced', 'synced');
+}
+
+function subscribeRealtime() {
+  supa.channel('clinic-checks')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'clinic_checklist_checks' }, (payload) => {
+      if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+        state[payload.new.item_id] = true;
+      } else if (payload.eventType === 'DELETE') {
+        delete state[payload.old.item_id];
+      }
+      renderAll();
+    })
+    .subscribe();
+}
+
 function counts() { return { total: ITEMS.length, checked: ITEMS.filter(i => state[i.id]).length }; }
 function phaseCounts(phase) {
   const items = ITEMS.filter(i => i.phase === phase);
   return { total: items.length, checked: items.filter(i => state[i.id]).length };
 }
-
-const $ = (id) => document.getElementById(id);
 
 function renderProgress() {
   const { total, checked } = counts();
@@ -533,21 +588,19 @@ function renderList() {
         <span class="qty">${escapeHtml(it.qty)}</span>
       </div>
     `;
-    row.onclick = () => {
-      if (state[it.id]) delete state[it.id]; else state[it.id] = true;
-      save();
-      renderAll();
-    };
+    row.onclick = () => toggleItem(it.id);
     list.appendChild(row);
   });
 }
 
 function renderAll() { renderProgress(); renderTabs(); renderList(); }
 
-$('resetBtn').onclick = () => {
-  if (confirm('Reset all ticks? This cannot be undone.')) {
-    state = {}; save(); renderAll();
-  }
+$('resetBtn').onclick = async () => {
+  if (!confirm('Reset all ticks across all devices? This cannot be undone.')) return;
+  setSync('resetting…', 'syncing');
+  const { error } = await supa.from('clinic_checklist_checks').delete().neq('item_id', '');
+  if (error) { setSync('error', 'error'); console.error(error); return; }
+  state = {}; renderAll(); setSync('synced', 'synced');
 };
 
 $('exportBtn').onclick = () => {
@@ -580,7 +633,12 @@ $('exportBtn').onclick = () => {
   URL.revokeObjectURL(url);
 };
 
-renderAll();
+(async () => {
+  renderAll();
+  await loadFromSupabase();
+  subscribeRealtime();
+  renderAll();
+})();
 </script>
 </body>
 </html>

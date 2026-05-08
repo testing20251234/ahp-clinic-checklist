@@ -145,6 +145,7 @@
   .item-body { flex: 1; min-width: 0; }
   .label { font-size: 14px; color: var(--text); }
   .label .star { color: var(--critical); margin-left: 4px; font-size: 11px; }
+  .label .moh { color: var(--accent); margin-left: 4px; font-size: 11px; }
   .qty {
     display: inline-block;
     margin-left: 8px;
@@ -218,7 +219,7 @@
 
 <main>
   <div class="legend">
-    <strong>Synced across devices</strong> &nbsp;·&nbsp; ticks sync in real-time &nbsp;·&nbsp; <span class="star">⭐</span> = inspection-critical &nbsp;·&nbsp; tap a row to tick
+    <strong>Synced across devices</strong> &nbsp;·&nbsp; <span class="star">⭐</span> = inspection-critical &nbsp;·&nbsp; 🏛 = MOH-mandated minimum (HCSA ELSM Annex A) &nbsp;·&nbsp; tap a row to tick
   </div>
   <div id="list"></div>
 </main>
@@ -236,13 +237,32 @@ const SUPABASE_KEY = "sb_publishable_gA4Ag-16NUpoObMUqBU4RA_Xe0BrRwM";
 const supa = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const ITEMS = [
+  // PHASE 0 — LICENSING PREREQUISITES (BEFORE OPENING)
+  { phase: "0", phaseLabel: "Phase 0 — Licensing prerequisites (do FIRST, before procuring)", section: "Pre-application", label: "GFA pre-clearance — email MOH_Check_GFA@moh.gov.sg with clinic proposal (medical-use quantum guideline check)", qty: "—", critical: true, mohMandated: true },
+  { phase: "0", section: "Pre-application", label: "HALP application submitted via halp.moh.gov.sg (≥2 months before opening)", qty: "—", critical: true, mohMandated: true },
+  { phase: "0", section: "Pre-application", label: "MOSD declared on HALP — Permanent / Temporary / Conveyance / Remote", qty: "—", mohMandated: true },
+  { phase: "0", section: "Pre-application", label: "Specified Services (SS) approval applied for — endoscopy / liposuction / blood transfusion / etc. (only if in scope)", qty: "if applicable", mohMandated: true },
+  { phase: "0", section: "Pre-application", label: "Licence fee budgeted — base $360 per MOSD + Specified Services fees ($900–$6,200)", qty: "—", mohMandated: true },
+
+  { phase: "0", section: "Key Office Holders (KOHs)", label: "Licensee declared on HALP", qty: "—", critical: true, mohMandated: true },
+  { phase: "0", section: "Key Office Holders (KOHs)", label: "Key Appointment Holder (KAH) appointed and declared", qty: "—", critical: true, mohMandated: true },
+  { phase: "0", section: "Key Office Holders (KOHs)", label: "Principal Officer (PO) appointed and declared", qty: "—", critical: true, mohMandated: true },
+  { phase: "0", section: "Key Office Holders (KOHs)", label: "Clinical Governance Officer (CGO) appointed — fully registered SMC + valid practising cert + (family physician OR specialist OR ≥5 yrs FT practice)", qty: "—", critical: true, mohMandated: true },
+  { phase: "0", section: "Key Office Holders (KOHs)", label: "KOH suitability checks done (no fraud/HCSA convictions, not undischarged bankrupt, capacity under MCA 2008, no cancelled health-prof registration)", qty: "—", mohMandated: true },
+  { phase: "0", section: "Key Office Holders (KOHs)", label: "MOH Telemedicine e-training completed by CGO (only if Remote MOSD)", qty: "if Remote", mohMandated: true },
+
+  { phase: "0", section: "Pre-inspection self-assessment", label: "Self-assessment checklist completed in HALP", qty: "—", critical: true, mohMandated: true },
+  { phase: "0", section: "Pre-inspection self-assessment", label: "Inspection date confirmed via HALP", qty: "—", mohMandated: true },
+  { phase: "0", section: "Pre-inspection self-assessment", label: "All 7 SOPs version-controlled, signed by CGO, available at premises", qty: "—", critical: true },
+
   // PHASE 1
   { phase: "1", phaseLabel: "Phase 1 — This week (long lead time)", section: "Emergency equipment (HSA-registered)", label: "AED with adult + paediatric pads, spare battery", qty: "×1", critical: true },
   { phase: "1", section: "Emergency equipment (HSA-registered)", label: "Oxygen cylinder + flow meter (medical grade)", qty: "×2", critical: true },
   { phase: "1", section: "Emergency equipment (HSA-registered)", label: "Oxygen masks + tubing (adult, paeds, non-rebreather)", qty: "4–6 sets" },
-  { phase: "1", section: "Emergency equipment (HSA-registered)", label: "Bag-valve-mask (Airviva) — adult + paediatric", qty: "×2", critical: true },
+  { phase: "1", section: "Emergency equipment (HSA-registered)", label: "Bag-valve-mask (Airviva) — adult + paediatric", qty: "×2", critical: true, mohMandated: true },
   { phase: "1", section: "Emergency equipment (HSA-registered)", label: "Pocket mask / face shield", qty: "×2" },
-  { phase: "1", section: "Emergency equipment (HSA-registered)", label: "Oropharyngeal airways sizes 0,1,2,3,4,5", qty: "×1 each" },
+  { phase: "1", section: "Emergency equipment (HSA-registered)", label: "Oropharyngeal airways sizes 0,1,2,3,4,5", qty: "×1 each", mohMandated: true },
+  { phase: "1", section: "Emergency equipment (HSA-registered)", label: "Bronchodilator delivery / spacer (adult + paediatric)", qty: "×2", mohMandated: true },
   { phase: "1", section: "Emergency equipment (HSA-registered)", label: "Nasopharyngeal airways (range)", qty: "×4" },
   { phase: "1", section: "Emergency equipment (HSA-registered)", label: "Suction apparatus + assorted catheters", qty: "×1 unit" },
   { phase: "1", section: "Emergency equipment (HSA-registered)", label: "Laryngoscope + Mac/Miller blades sizes 2,3,4", qty: "×1 set" },
@@ -257,19 +277,19 @@ const ITEMS = [
   { phase: "1", section: "Cold chain + controlled drugs", label: "Validated cold box with temperature monitor", qty: "×1" },
   { phase: "1", section: "Cold chain + controlled drugs", label: "Gel packs (refrigerated + frozen)", qty: "×6 each" },
 
-  { phase: "1", section: "Stocked emergency medications", label: "Adrenaline 1:1000 (1mg/mL) ampoule", qty: "×10", critical: true },
+  { phase: "1", section: "Stocked emergency medications", label: "Adrenaline 1:1000 (1mg/mL) ampoule", qty: "×10", critical: true, mohMandated: true },
   { phase: "1", section: "Stocked emergency medications", label: "Adrenaline 1:10,000 (0.1mg/mL) prefilled", qty: "×5", critical: true },
   { phase: "1", section: "Stocked emergency medications", label: "Atropine 0.6mg/mL", qty: "×5" },
-  { phase: "1", section: "Stocked emergency medications", label: "Hydrocortisone 100mg vial", qty: "×5" },
-  { phase: "1", section: "Stocked emergency medications", label: "Antihistamine inj (Diphenhydramine OR Chlorpheniramine OR Promethazine)", qty: "×5" },
-  { phase: "1", section: "Stocked emergency medications", label: "Salbutamol nebule 2.5mg/2.5mL", qty: "×10" },
+  { phase: "1", section: "Stocked emergency medications", label: "Hydrocortisone 100mg vial", qty: "×5", mohMandated: true },
+  { phase: "1", section: "Stocked emergency medications", label: "Antihistamine inj (Diphenhydramine OR Chlorpheniramine OR Promethazine)", qty: "×5", mohMandated: true },
+  { phase: "1", section: "Stocked emergency medications", label: "Salbutamol nebule 2.5mg/2.5mL", qty: "×10", mohMandated: true },
   { phase: "1", section: "Stocked emergency medications", label: "Salbutamol MDI 100mcg", qty: "×2" },
   { phase: "1", section: "Stocked emergency medications", label: "Glucose 50% 50mL prefilled", qty: "×3" },
   { phase: "1", section: "Stocked emergency medications", label: "Oral glucose / glucose gel", qty: "×5" },
   { phase: "1", section: "Stocked emergency medications", label: "Aspirin 300mg dispersible", qty: "×1 box" },
   { phase: "1", section: "Stocked emergency medications", label: "GTN 0.5mg sublingual", qty: "×1 box" },
   { phase: "1", section: "Stocked emergency medications", label: "IV Dextrose 5% 500mL", qty: "×4" },
-  { phase: "1", section: "Stocked emergency medications", label: "IV Normal Saline 500mL", qty: "×6" },
+  { phase: "1", section: "Stocked emergency medications", label: "IV Normal Saline 500mL", qty: "×6", mohMandated: true },
   { phase: "1", section: "Stocked emergency medications", label: "IV Hartmann's 500mL", qty: "×4" },
   { phase: "1", section: "Stocked emergency medications", label: "IV Dextrose Saline 500mL", qty: "×2" },
 
@@ -308,8 +328,8 @@ const ITEMS = [
   { phase: "3", section: "Phlebotomy / specimen", label: "Urine collection cups (sterile)", qty: "×1 box" },
   { phase: "3", section: "Phlebotomy / specimen", label: "Safety-engineered needles (assorted gauges)", qty: "×1 box each" },
   { phase: "3", section: "Phlebotomy / specimen", label: "Syringes 1/3/5/10/20mL", qty: "×1 box each" },
-  { phase: "3", section: "Phlebotomy / specimen", label: "IV cannulas 18/20/22/24G", qty: "×1 box each" },
-  { phase: "3", section: "Phlebotomy / specimen", label: "IV giving sets (standard + macro)", qty: "×1 box each" },
+  { phase: "3", section: "Phlebotomy / specimen", label: "IV cannulas 18/20/22/24G", qty: "×1 box each", mohMandated: true },
+  { phase: "3", section: "Phlebotomy / specimen", label: "IV giving sets (standard + macro)", qty: "×1 box each", mohMandated: true },
   { phase: "3", section: "Phlebotomy / specimen", label: "Tourniquets (single-use, latex-free)", qty: "×1 box" },
   { phase: "3", section: "Phlebotomy / specimen", label: "Antiseptic wipes (70% IPA)", qty: "×1 box" },
   { phase: "3", section: "Phlebotomy / specimen", label: "Chlorhexidine 2%", qty: "×1 bottle" },
@@ -443,7 +463,7 @@ const ITEMS = [
 function slug(s) {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60);
 }
-ITEMS.forEach((it, i) => { it.id = `${it.phase}-${slug(it.label)}-${i}`; });
+ITEMS.forEach((it) => { it.id = `${it.phase}-${slug(it.label)}`; });
 
 let state = {};
 let activeFilter = 'all';
@@ -515,6 +535,8 @@ function renderProgress() {
 function renderTabs() {
   const phases = [
     { key: 'all', label: 'All' },
+    { key: 'moh', label: '🏛 MOH minimum' },
+    { key: '0', label: 'Phase 0 (licensing)' },
     { key: '1', label: 'Phase 1' },
     { key: '2', label: 'Phase 2' },
     { key: '3', label: 'Phase 3' },
@@ -531,9 +553,13 @@ function renderTabs() {
     const btn = document.createElement('button');
     btn.className = 'tab' + (activeFilter === p.key ? ' active' : '');
     let label = p.label;
-    if (['1','2','3','4','5','6','7'].includes(p.key)) {
+    if (['0','1','2','3','4','5','6','7'].includes(p.key)) {
       const c = phaseCounts(p.key);
       label += ` (${c.checked}/${c.total})`;
+    } else if (p.key === 'moh') {
+      const items = ITEMS.filter(i => i.mohMandated);
+      const checked = items.filter(i => state[i.id]).length;
+      label += ` (${checked}/${items.length})`;
     }
     btn.textContent = label;
     btn.onclick = () => { activeFilter = p.key; renderAll(); };
@@ -550,6 +576,7 @@ function renderList() {
   list.innerHTML = '';
   let visible = ITEMS;
   if (activeFilter === 'critical') visible = ITEMS.filter(i => i.critical);
+  else if (activeFilter === 'moh') visible = ITEMS.filter(i => i.mohMandated);
   else if (activeFilter === 'unchecked') visible = ITEMS.filter(i => !state[i.id]);
   else if (activeFilter !== 'all') visible = ITEMS.filter(i => i.phase === activeFilter);
 
@@ -584,7 +611,7 @@ function renderList() {
     row.innerHTML = `
       <div class="checkbox"></div>
       <div class="item-body">
-        <span class="label">${escapeHtml(it.label)}${it.critical ? '<span class="star">⭐</span>' : ''}</span>
+        <span class="label">${escapeHtml(it.label)}${it.mohMandated ? '<span class="moh">🏛</span>' : ''}${it.critical ? '<span class="star">⭐</span>' : ''}</span>
         <span class="qty">${escapeHtml(it.qty)}</span>
       </div>
     `;

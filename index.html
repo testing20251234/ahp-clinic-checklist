@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AHP Clinic — Procurement Checklist</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #161922;
+    --surface-2: #1d212c;
+    --border: #262b38;
+    --text: #e7eaf0;
+    --text-dim: #8b93a7;
+    --accent: #6ea8ff;
+    --accent-dim: #3a557a;
+    --done: #4ade80;
+    --warn: #f5b454;
+    --critical: #f87171;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  body.locked { overflow: hidden; }
+  header {
+    position: sticky; top: 0; z-index: 10;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 16px 10px;
+  }
+  h1 { margin: 0; font-size: 18px; letter-spacing: -0.2px; }
+  h1 .sub { color: var(--text-dim); font-weight: 400; font-size: 14px; margin-left: 8px; }
+  .progress-wrap {
+    margin-top: 10px;
+    background: var(--surface-2);
+    border-radius: 8px;
+    height: 8px; overflow: hidden;
+    position: relative;
+  }
+  .progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--done));
+    width: 0%;
+    transition: width 0.3s ease;
+  }
+  .progress-text {
+    margin-top: 6px;
+    font-size: 12px;
+    color: var(--text-dim);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .progress-text .count { color: var(--text); font-variant-numeric: tabular-nums; }
+  .sync-indicator { font-size: 11px; color: var(--text-dim); margin-left: 8px; }
+  .sync-indicator.synced { color: var(--done); }
+  .sync-indicator.syncing { color: var(--warn); }
+  .sync-indicator.error { color: var(--critical); }
+  .tabs {
+    display: flex; gap: 6px; overflow-x: auto;
+    padding: 10px 16px 8px;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 78px; z-index: 9;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab {
+    flex: 0 0 auto;
+    padding: 7px 12px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-dim);
+    border-radius: 16px;
+    font-size: 13px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s;
+  }
+  .tab:hover { color: var(--text); border-color: var(--accent-dim); }
+  .tab.active {
+    background: var(--accent);
+    color: #0c1220;
+    border-color: var(--accent);
+    font-weight: 600;
+  }
+  .tab .dot {
+    display: inline-block;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--done);
+    margin-right: 5px;
+    vertical-align: middle;
+  }
+  main { padding: 12px 16px 100px; max-width: 760px; margin: 0 auto; }
+  .phase-block { margin-bottom: 28px; }
+  .phase-header {
+    margin: 18px 0 6px;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .section-title {
+    margin: 18px 0 8px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+    border-left: 3px solid var(--accent-dim);
+    padding-left: 10px;
+  }
+  .item {
+    display: flex; gap: 10px; align-items: flex-start;
+    padding: 10px 12px;
+    border-radius: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    margin-bottom: 6px;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.12s, border-color 0.12s;
+  }
+  .item:hover { background: var(--surface-2); }
+  .item.checked {
+    background: rgba(74, 222, 128, 0.07);
+    border-color: rgba(74, 222, 128, 0.3);
+  }
+  .item.checked .label { color: var(--text-dim); text-decoration: line-through; }
+  .item.checked .qty { opacity: 0.5; }
+  .item.critical:not(.checked) { border-left: 3px solid var(--critical); }
+  .checkbox {
+    flex: 0 0 auto;
+    width: 20px; height: 20px;
+    border: 2px solid var(--border);
+    border-radius: 5px;
+    margin-top: 2px;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s;
+  }
+  .item.checked .checkbox {
+    background: var(--done);
+    border-color: var(--done);
+  }
+  .item.checked .checkbox::after {
+    content: "✓";
+    color: #0c1220;
+    font-weight: 700;
+    font-size: 13px;
+    line-height: 1;
+  }
+  .item-body { flex: 1; min-width: 0; }
+  .label { font-size: 14px; color: var(--text); }
+  .label .star { color: var(--critical); margin-left: 4px; font-size: 11px; }
+  .qty {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 2px 7px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-size: 11px;
+    color: var(--text-dim);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .toolbar {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: var(--bg);
+    border-top: 1px solid var(--border);
+    padding: 10px 16px env(safe-area-inset-bottom);
+    display: flex; gap: 8px;
+    z-index: 11;
+  }
+  .toolbar button {
+    flex: 1;
+    padding: 11px 12px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    border-radius: 8px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background 0.12s;
+  }
+  .toolbar button:hover { background: var(--surface-2); }
+  .toolbar button.danger { color: var(--critical); }
+  .empty {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-dim);
+    font-size: 14px;
+  }
+  .legend {
+    margin: 0 0 12px;
+    padding: 10px 12px;
+    background: var(--surface-2);
+    border-radius: 8px;
+    font-size: 12px;
+    color: var(--text-dim);
+    border-left: 3px solid var(--accent);
+  }
+  .legend strong { color: var(--text); }
+  .legend .star { color: var(--critical); margin: 0 2px; }
+  /* ======= AUTH OVERLAY ======= */
+  .auth-overlay {
+    position: fixed; inset: 0;
+    background: rgba(15, 17, 23, 0.96);
+    backdrop-filter: blur(6px);
+    z-index: 100;
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px;
+  }
+  .auth-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 28px 24px;
+    max-width: 380px; width: 100%;
+    text-align: left;
+  }
+  .auth-card h2 { margin: 0 0 4px; font-size: 18px; }
+  .auth-card p { color: var(--text-dim); font-size: 13px; margin: 6px 0 16px; }
+  .auth-card .email-display {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 13px;
+    color: var(--text);
+    margin-bottom: 14px;
+    word-break: break-all;
+  }
+  .auth-card input {
+    width: 100%;
+    padding: 12px 14px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 16px;
+    font-family: ui-monospace, "SF Mono", monospace;
+    letter-spacing: 4px;
+    text-align: center;
+    margin-bottom: 12px;
+  }
+  .auth-card input:focus { outline: none; border-color: var(--accent); }
+  .auth-card button {
+    width: 100%;
+    padding: 12px;
+    background: var(--accent);
+    color: #0c1220;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+  .auth-card button:hover { opacity: 0.92; }
+  .auth-card button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .auth-card .secondary {
+    background: transparent;
+    color: var(--text-dim);
+    border: 1px solid var(--border);
+    margin-top: 8px;
+  }
+  .auth-status {
+    margin-top: 12px;
+    padding: 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    text-align: center;
+  }
+  .auth-status.error { background: rgba(248, 113, 113, 0.1); color: var(--critical); }
+  .auth-status.success { background: rgba(74, 222, 128, 0.1); color: var(--done); }
+  .auth-status.info { background: rgba(110, 168, 255, 0.1); color: var(--accent); }
+  .who { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+  .item.checked .who { display: inline; }
+  @media (min-width: 720px) {
+    .tabs { top: 78px; }
+    h1 { font-size: 20px; }
+    .item { padding: 12px 14px; }
+    .label { font-size: 15px; }
+  }
+</style>
+</head>
+<body class="locked">
+
+<!-- ============ AUTH OVERLAY ============ -->
+<div class="auth-overlay" id="authOverlay">
+  <div class="auth-card">
+    <h2 id="authTitle">AHP Clinic Checklist</h2>
+    <p id="authDesc">Send a one-time login code to the team email.</p>
+
+    <div id="authStep1">
+      <div class="email-display">chewzhiweisg@gmail.com</div>
+      <button id="sendCodeBtn">Send login code</button>
+    </div>
+
+    <div id="authStep2" style="display:none;">
+      <p>Enter the 6-digit code sent to <strong>chewzhiweisg@gmail.com</strong></p>
+      <input id="otpInput" type="text" inputmode="numeric" maxlength="6" placeholder="000000" autocomplete="one-time-code" />
+      <button id="verifyBtn">Verify and continue</button>
+      <button id="resendBtn" class="secondary">Send another code</button>
+    </div>
+
+    <div class="auth-status" id="authStatus" style="display:none;"></div>
+  </div>
+</div>
+
+<!-- ============ MAIN APP ============ -->
+<header>
+  <h1>AHP Clinic Procurement <span class="sub">— Pre-Inspection Buy List</span></h1>
+  <div class="progress-wrap"><div class="progress-bar" id="progressBar"></div></div>
+  <div class="progress-text">
+    <span><span class="count" id="progressCount">0 / 0</span> items checked <span class="sync-indicator" id="syncIndicator">offline</span></span>
+    <span id="progressPct">0%</span>
+  </div>
+</header>
+
+<div class="tabs" id="tabs"></div>
+
+<main>
+  <div class="legend">
+    <strong>Synced across devices</strong> &nbsp;·&nbsp; <span class="star">⭐</span> = inspection-critical &nbsp;·&nbsp; tap a row to tick &nbsp;·&nbsp; updates appear in real-time
+  </div>
+  <div id="list"></div>
+</main>
+
+<div class="toolbar">
+  <button id="exportBtn">Export</button>
+  <button id="logoutBtn" class="danger">Sign out</button>
+</div>
+
+<script type="module">
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const SUPABASE_URL  = "https://geheirnfbhqnhrjmrrax.supabase.co";
+const SUPABASE_KEY  = "sb_publishable_gA4Ag-16NUpoObMUqBU4RA_Xe0BrRwM";
+const TEAM_EMAIL    = "chewzhiweisg@gmail.com";
+
+const supa = createClient(SUPABASE_URL, SUPABASE_KEY, {
+  auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false }
+});
+
+// ============ ITEMS DATA ============
+const ITEMS = [
+  // PHASE 1
+  { phase: "1", phaseLabel: "Phase 1 — This week (long lead time)", section: "Emergency equipment (HSA-registered)", label: "AED with adult + paediatric pads, spare battery", qty: "×1", critical: true },
+  { phase: "1", section: "Emergency equipment (HSA-registered)", label: "Oxygen cylinder + flow meter (medical grade)", qty: "×2", critical: true },
+  { phase: "1", section: "Emergency equipment (HSA-registered)", label: "Oxygen masks + tubing (adult, paeds, non-rebreather)", qty: "4–6 sets" },
+  { phase: "1", section: "Emergency equipment (HSA-registered)", label: "Bag-valve-mask (Airviva) — adult + paediatric", qty: "×2", critical: true },
+  { phase: "1", section: "Emergency equipment (HSA-registered)", label: "Pocket mask / face shield", qty: "×2" },
+  { phase: "1", section: "Emergency equipment (HSA-registered)", label: "Oropharyngeal airways sizes 0,1,2,3,4,5", qty: "×1 each" },
+  { phase: "1", section: "Emergency equipment (HSA-registered)", label: "Nasopharyngeal airways (range)", qty: "×4" },
+  { phase: "1", section: "Emergency equipment (HSA-registered)", label: "Suction apparatus + assorted catheters", qty: "×1 unit" },
+  { phase: "1", section: "Emergency equipment (HSA-registered)", label: "Laryngoscope + Mac/Miller blades sizes 2,3,4", qty: "×1 set" },
+  { phase: "1", section: "Emergency equipment (HSA-registered)", label: "Endotracheal tubes 6.0/6.5/7.0/7.5/8.0 mm", qty: "×2 each" },
+  { phase: "1", section: "Emergency equipment (HSA-registered)", label: "Emergency drug trolley (lockable, mobile)", qty: "×1" },
+  { phase: "1", section: "Emergency equipment (HSA-registered)", label: "Laminated emergency algorithms (BLS/ACLS/anaphylaxis/paeds)", qty: "×1 set" },
+  { phase: "1", section: "Emergency equipment (HSA-registered)", label: "ECG machine 12-lead, cart-mounted", qty: "×1" },
+
+  { phase: "1", section: "Cold chain + controlled drugs", label: "Pharmaceutical-grade refrigerator 2–8°C with min/max thermometer + door alarm", qty: "×1", critical: true },
+  { phase: "1", section: "Cold chain + controlled drugs", label: "Min/max thermometer (calibrated, with cal cert)", qty: "×2" },
+  { phase: "1", section: "Cold chain + controlled drugs", label: "Locked, immovable CD safe (bolted, dual-lock)", qty: "×1", critical: true },
+  { phase: "1", section: "Cold chain + controlled drugs", label: "Validated cold box with temperature monitor", qty: "×1" },
+  { phase: "1", section: "Cold chain + controlled drugs", label: "Gel packs (refrigerated + frozen)", qty: "×6 each" },
+
+  { phase: "1", section: "Stocked emergency medications", label: "Adrenaline 1:1000 (1mg/mL) ampoule", qty: "×10", critical: true },
+  { phase: "1", section: "Stocked emergency medications", label: "Adrenaline 1:10,000 (0.1mg/mL) prefilled", qty: "×5", critical: true },
+  { phase: "1", section: "Stocked emergency medications", label: "Atropine 0.6mg/mL", qty: "×5" },
+  { phase: "1", section: "Stocked emergency medications", label: "Hydrocortisone 100mg vial", qty: "×5" },
+  { phase: "1", section: "Stocked emergency medications", label: "Antihistamine inj (Diphenhydramine OR Chlorpheniramine OR Promethazine)", qty: "×5" },
+  { phase: "1", section: "Stocked emergency medications", label: "Salbutamol nebule 2.5mg/2.5mL", qty: "×10" },
+  { phase: "1", section: "Stocked emergency medications", label: "Salbutamol MDI 100mcg", qty: "×2" },
+  { phase: "1", section: "Stocked emergency medications", label: "Glucose 50% 50mL prefilled", qty: "×3" },
+  { phase: "1", section: "Stocked emergency medications", label: "Oral glucose / glucose gel", qty: "×5" },
+  { phase: "1", section: "Stocked emergency medications", label: "Aspirin 300mg dispersible", qty: "×1 box" },
+  { phase: "1", section: "Stocked emergency medications", label: "GTN 0.5mg sublingual", qty: "×1 box" },
+  { phase: "1", section: "Stocked emergency medications", label: "IV Dextrose 5% 500mL", qty: "×4" },
+  { phase: "1", section: "Stocked emergency medications", label: "IV Normal Saline 500mL", qty: "×6" },
+  { phase: "1", section: "Stocked emergency medications", label: "IV Hartmann's 500mL", qty: "×4" },
+  { phase: "1", section: "Stocked emergency medications", label: "IV Dextrose Saline 500mL", qty: "×2" },
+
+  // PHASE 2
+  { phase: "2", phaseLabel: "Phase 2 — Alongside renovation", section: "Site fit-out", label: "Examination couch (adjustable, paper-roll holder)", qty: "×1 per consult room" },
+  { phase: "2", section: "Site fit-out", label: "Paper rolls for couch", qty: "bulk" },
+  { phase: "2", section: "Site fit-out", label: "Privacy curtain / screen", qty: "×1 per room" },
+  { phase: "2", section: "Site fit-out", label: "Clinical handwash basin (sensor or wrist tap)", qty: "×1 per room" },
+  { phase: "2", section: "Site fit-out", label: "Drug trolley (lockable)", qty: "×1" },
+  { phase: "2", section: "Site fit-out", label: "Storage cabinet (clean supplies, lockable)", qty: "×2" },
+  { phase: "2", section: "Site fit-out", label: "Storage cabinet (dirty/used, separate)", qty: "×1" },
+  { phase: "2", section: "Site fit-out", label: "Reception desk + chair", qty: "×1" },
+  { phase: "2", section: "Site fit-out", label: "Patient waiting chairs", qty: "×4–6" },
+  { phase: "2", section: "Site fit-out", label: "Step stool", qty: "×1 per room" },
+  { phase: "2", section: "Site fit-out", label: "Stadiometer (wall-mounted height)", qty: "×1" },
+
+  { phase: "2", section: "Fire safety", label: "Fire extinguishers (per FSC)", qty: "per FSC" },
+  { phase: "2", section: "Fire safety", label: "Smoke detectors (per FSC)", qty: "per FSC" },
+  { phase: "2", section: "Fire safety", label: "Emergency exit signage + lighting (per FSC)", qty: "per FSC" },
+  { phase: "2", section: "Fire safety", label: "First-aid kit (MOM-compliant workplace)", qty: "×1" },
+
+  // PHASE 3
+  { phase: "3", phaseLabel: "Phase 3 — Diagnostic + clinical (commodity)", section: "Per consult room", label: "Stethoscope (adult, cardiology grade)", qty: "×1 per room" },
+  { phase: "3", section: "Per consult room", label: "Sphygmomanometer + cuffs (adult, large adult, paediatric)", qty: "3 sizes per room" },
+  { phase: "3", section: "Per consult room", label: "Digital thermometer (calibrated ±0.1°C)", qty: "×2 per room" },
+  { phase: "3", section: "Per consult room", label: "Pulse oximeter (finger)", qty: "×1 per room" },
+  { phase: "3", section: "Per consult room", label: "Glucometer + test strips + lancets", qty: "×1 + 1 box strips" },
+  { phase: "3", section: "Per consult room", label: "Otoscope / ophthalmoscope set", qty: "×1 per room" },
+  { phase: "3", section: "Per consult room", label: "Penlight", qty: "×2 per room" },
+  { phase: "3", section: "Per consult room", label: "Tape measure (cm)", qty: "×1 per room" },
+  { phase: "3", section: "Per consult room", label: "Examination light (LED, mobile)", qty: "×1 per room" },
+  { phase: "3", section: "Per consult room", label: "Weighing scale (digital, ±0.1kg)", qty: "×1" },
+  { phase: "3", section: "Per consult room", label: "Patient monitor (vital signs)", qty: "×1 (procedure room)" },
+
+  { phase: "3", section: "Phlebotomy / specimen", label: "Vacutainer tubes — EDTA, SST, citrate, fluoride", qty: "×1 box each" },
+  { phase: "3", section: "Phlebotomy / specimen", label: "Urine collection cups (sterile)", qty: "×1 box" },
+  { phase: "3", section: "Phlebotomy / specimen", label: "Safety-engineered needles (assorted gauges)", qty: "×1 box each" },
+  { phase: "3", section: "Phlebotomy / specimen", label: "Syringes 1/3/5/10/20mL", qty: "×1 box each" },
+  { phase: "3", section: "Phlebotomy / specimen", label: "IV cannulas 18/20/22/24G", qty: "×1 box each" },
+  { phase: "3", section: "Phlebotomy / specimen", label: "IV giving sets (standard + macro)", qty: "×1 box each" },
+  { phase: "3", section: "Phlebotomy / specimen", label: "Tourniquets (single-use, latex-free)", qty: "×1 box" },
+  { phase: "3", section: "Phlebotomy / specimen", label: "Antiseptic wipes (70% IPA)", qty: "×1 box" },
+  { phase: "3", section: "Phlebotomy / specimen", label: "Chlorhexidine 2%", qty: "×1 bottle" },
+  { phase: "3", section: "Phlebotomy / specimen", label: "Sterile gauze 4×4 + 2×2", qty: "×1 box each" },
+  { phase: "3", section: "Phlebotomy / specimen", label: "Bandages — crepe, gauze roll, micropore", qty: "×2 boxes" },
+  { phase: "3", section: "Phlebotomy / specimen", label: "Adhesive dressings + transparent film", qty: "×1 kit" },
+
+  // PHASE 4
+  { phase: "4", phaseLabel: "Phase 4 — PPE + hygiene + waste", section: "PPE", label: "Examination gloves (non-sterile) — nitrile/latex, S/M/L/XL", qty: "×1 box per size" },
+  { phase: "4", section: "PPE", label: "Sterile gloves S/M/L", qty: "×1 box per size" },
+  { phase: "4", section: "PPE", label: "Surgical masks (3-ply)", qty: "×1 box" },
+  { phase: "4", section: "PPE", label: "N95 / P2 respirators (≥2 sizes — fit-testing programme required)", qty: "×1 box per size", critical: true },
+  { phase: "4", section: "PPE", label: "Eye protection — goggles + face shields", qty: "×5" },
+  { phase: "4", section: "PPE", label: "Isolation gowns (non-sterile, disposable)", qty: "×1 pack" },
+  { phase: "4", section: "PPE", label: "Sterile gowns (disposable)", qty: "×1 pack" },
+
+  { phase: "4", section: "Hand hygiene", label: "Alcohol-based hand rub (ABHR) dispenser", qty: "×1 per room + entry/exit", critical: true },
+  { phase: "4", section: "Hand hygiene", label: "Liquid antimicrobial hand soap + dispenser", qty: "×1 per sink" },
+  { phase: "4", section: "Hand hygiene", label: "Paper towels (disposable)", qty: "bulk" },
+
+  { phase: "4", section: "Cleaning / decontamination", label: "Hospital-approved surface disinfectant + spray bottles", qty: "2L" },
+  { phase: "4", section: "Cleaning / decontamination", label: "Bleach concentrate (for 1:10 spill solution)", qty: "×1 bottle" },
+  { phase: "4", section: "Cleaning / decontamination", label: "Spill kit (biohazard, wall-mounted)", qty: "×1" },
+  { phase: "4", section: "Cleaning / decontamination", label: "Dustpan + forceps (sharp/glass spills)", qty: "×1 set" },
+
+  { phase: "4", section: "Waste", label: "Sharps containers", qty: "×1 per consult/procedure room + reception", critical: true },
+  { phase: "4", section: "Waste", label: "Biohazard waste bin (foot-operated, lidded)", qty: "×1 per clinical room" },
+  { phase: "4", section: "Waste", label: "Yellow biohazard bags", qty: "×1 box" },
+  { phase: "4", section: "Waste", label: "Black general-waste bags", qty: "×1 roll" },
+  { phase: "4", section: "Waste", label: "Licensed biohazard-waste vendor contract (SembWaste / ALS Tox-free)", qty: "active", critical: true },
+
+  // PHASE 5
+  { phase: "5", phaseLabel: "Phase 5 — Signage + records", section: "Signage / displays", label: "Red allergy alert wristbands", qty: "×1 box" },
+  { phase: "5", section: "Signage / displays", label: "Allergy alert stickers (paper files)", qty: "×1 sheet pack" },
+  { phase: "5", section: "Signage / displays", label: "Isolation precaution signage (contact/droplet/airborne, laminated A4)", qty: "×1 set per room" },
+  { phase: "5", section: "Signage / displays", label: "HCSA licence display frame (reception wall)", qty: "×1", critical: true },
+  { phase: "5", section: "Signage / displays", label: "SMC Practising Cert display frame (per consult room)", qty: "×1 per physician", critical: true },
+  { phase: "5", section: "Signage / displays", label: "PDPA notice (reception, waiting area)", qty: "×1" },
+  { phase: "5", section: "Signage / displays", label: "Charter of Patient Rights / fee schedule (reception)", qty: "×1" },
+
+  { phase: "5", section: "Records system", label: "Controlled Drug Register (bound, sequentially numbered)", qty: "×1", critical: true },
+  { phase: "5", section: "Records system", label: "Cold-chain temperature log (printed sheets OR digital logger)", qty: "pad" },
+  { phase: "5", section: "Records system", label: "Daily emergency equipment check sheet", qty: "pad" },
+  { phase: "5", section: "Records system", label: "Equipment maintenance log (Appx A SOP-004)", qty: "per asset" },
+  { phase: "5", section: "Records system", label: "Incident report forms", qty: "pad" },
+  { phase: "5", section: "Records system", label: "Hand-hygiene audit form", qty: "pad" },
+  { phase: "5", section: "Records system", label: "Specimen tracking log (system or pad)", qty: "system or pad" },
+  { phase: "5", section: "Records system", label: "Patient health records — EMR system OR physical files (PDPA-compliant)", qty: "×1 system", critical: true },
+  { phase: "5", section: "Records system", label: "MOH-compliant prescription pads", qty: "×5" },
+  { phase: "5", section: "Records system", label: "Consent forms (procedures)", qty: "pads" },
+
+  // PHASE 6
+  { phase: "6", phaseLabel: "Phase 6 — Off-site mobile bag (SOP-007)", section: "Off-site bag", label: "Doctor's bag / medical kit bag (durable, multi-compartment)", qty: "×1" },
+  { phase: "6", section: "Off-site bag", label: "Stethoscope (off-site)", qty: "×1" },
+  { phase: "6", section: "Off-site bag", label: "Manual sphygmomanometer + cuffs", qty: "×1 set" },
+  { phase: "6", section: "Off-site bag", label: "Digital thermometer", qty: "×1" },
+  { phase: "6", section: "Off-site bag", label: "Pulse oximeter (portable)", qty: "×1" },
+  { phase: "6", section: "Off-site bag", label: "Glucometer + strips + lancets", qty: "×1" },
+  { phase: "6", section: "Off-site bag", label: "Otoscope / ophthalmoscope (portable)", qty: "×1" },
+  { phase: "6", section: "Off-site bag", label: "Penlight", qty: "×1" },
+  { phase: "6", section: "Off-site bag", label: "Tape measure", qty: "×1" },
+  { phase: "6", section: "Off-site bag", label: "Portable ECG machine", qty: "×1" },
+  { phase: "6", section: "Off-site bag", label: "Portable AED", qty: "×1", critical: true },
+  { phase: "6", section: "Off-site bag", label: "Pocket mask / face shield", qty: "×1" },
+  { phase: "6", section: "Off-site bag", label: "BVM (collapsible if available)", qty: "×1" },
+  { phase: "6", section: "Off-site bag", label: "Oropharyngeal airways sizes 1–4", qty: "×1 each" },
+  { phase: "6", section: "Off-site bag", label: "Bronchodilator delivery / spacer", qty: "×1" },
+
+  { phase: "6", section: "Off-site drugs", label: "Adrenaline 1:1000", qty: "×5 amp" },
+  { phase: "6", section: "Off-site drugs", label: "Hydrocortisone 100mg", qty: "×2 vials" },
+  { phase: "6", section: "Off-site drugs", label: "Antihistamine inj", qty: "×2 amp" },
+  { phase: "6", section: "Off-site drugs", label: "Salbutamol MDI + spacer", qty: "×1 + ×1" },
+  { phase: "6", section: "Off-site drugs", label: "Aspirin 300mg", qty: "×10 tabs" },
+  { phase: "6", section: "Off-site drugs", label: "Oral glucose gel", qty: "×2 tubes" },
+  { phase: "6", section: "Off-site drugs", label: "IV Normal Saline 500mL", qty: "×2" },
+  { phase: "6", section: "Off-site drugs", label: "IV Dextrose 5% 500mL", qty: "×1" },
+
+  { phase: "6", section: "Off-site consumables", label: "Gloves S/M/L", qty: "×10 each" },
+  { phase: "6", section: "Off-site consumables", label: "Surgical masks", qty: "×10" },
+  { phase: "6", section: "Off-site consumables", label: "Hand sanitiser (60mL travel)", qty: "×2" },
+  { phase: "6", section: "Off-site consumables", label: "Alcohol wipes", qty: "×20" },
+  { phase: "6", section: "Off-site consumables", label: "Sterile gauze 4×4", qty: "×10" },
+  { phase: "6", section: "Off-site consumables", label: "Bandages (crepe, gauze roll, micropore)", qty: "×1 each" },
+  { phase: "6", section: "Off-site consumables", label: "Adhesive dressings", qty: "×10" },
+  { phase: "6", section: "Off-site consumables", label: "Syringes 1/3/5/10mL", qty: "×5 each" },
+  { phase: "6", section: "Off-site consumables", label: "Needles (assorted)", qty: "×10" },
+  { phase: "6", section: "Off-site consumables", label: "IV cannulas 20/22G", qty: "×5 each" },
+  { phase: "6", section: "Off-site consumables", label: "IV giving set", qty: "×2" },
+  { phase: "6", section: "Off-site consumables", label: "Tourniquets", qty: "×2" },
+  { phase: "6", section: "Off-site consumables", label: "Specimen tubes (full panel)", qty: "×5 each type" },
+  { phase: "6", section: "Off-site consumables", label: "Urine containers", qty: "×5" },
+  { phase: "6", section: "Off-site consumables", label: "Biohazard bags (small)", qty: "×5" },
+
+  { phase: "6", section: "Off-site cold chain + safety", label: "Validated cold box / insulated bag", qty: "×1" },
+  { phase: "6", section: "Off-site cold chain + safety", label: "Gel packs (frozen + refrigerated)", qty: "×4" },
+  { phase: "6", section: "Off-site cold chain + safety", label: "Min/max thermometer (cold box)", qty: "×1" },
+  { phase: "6", section: "Off-site cold chain + safety", label: "Chemical temperature indicator strips", qty: "×5" },
+  { phase: "6", section: "Off-site cold chain + safety", label: "Lockable container (controlled drugs, off-site)", qty: "×1", critical: true },
+  { phase: "6", section: "Off-site cold chain + safety", label: "Portable sharps container", qty: "×1", critical: true },
+  { phase: "6", section: "Off-site cold chain + safety", label: "Spill kit (compact)", qty: "×1" },
+  { phase: "6", section: "Off-site cold chain + safety", label: "Disinfectant wipes (hospital-grade)", qty: "×1 tub" },
+
+  { phase: "6", section: "Off-site documentation", label: "Pre-Visit Checklist pad (Appx A SOP-007)", qty: "pad" },
+  { phase: "6", section: "Off-site documentation", label: "Medical Bag Inventory Checklist pad (Appx B SOP-007)", qty: "pad" },
+  { phase: "6", section: "Off-site documentation", label: "Temporary Premises Visit Log pad (Appx C SOP-007)", qty: "pad" },
+  { phase: "6", section: "Off-site documentation", label: "Consent form pad", qty: "pad" },
+  { phase: "6", section: "Off-site documentation", label: "Prescription pad (off-site)", qty: "×1" },
+  { phase: "6", section: "Off-site documentation", label: "Referral form pad", qty: "pad" },
+  { phase: "6", section: "Off-site documentation", label: "Chain-of-custody form pad", qty: "pad" },
+  { phase: "6", section: "Off-site documentation", label: "SCDF Hazardous Materials Transport Driver Permit (designated driver, BATA)", qty: "permit", critical: true },
+
+  // PHASE 7
+  { phase: "7", phaseLabel: "Phase 7 — Non-equipment punch list", section: "Licensing & display", label: "HCSA Outpatient Medical Service licence — issued and displayed", qty: "—", critical: true },
+  { phase: "7", section: "Licensing & display", label: "SMC Practising Cert displayed in each consult room", qty: "—" },
+  { phase: "7", section: "Licensing & display", label: "PDPA notice posted, DPO appointed", qty: "—" },
+  { phase: "7", section: "Licensing & display", label: "FSC displayed", qty: "—" },
+  { phase: "7", section: "Vendors & contracts", label: "Biohazard-waste disposal vendor contracted", qty: "—", critical: true },
+  { phase: "7", section: "Vendors & contracts", label: "EMR vendor selected and onboarded", qty: "—" },
+  { phase: "7", section: "Logging windows", label: "Pharmacy fridge temperature log running ≥30 days BEFORE inspection", qty: "—", critical: true },
+  { phase: "7", section: "Logging windows", label: "CD register opened, dual-signature procedure documented", qty: "—" },
+  { phase: "7", section: "Logging windows", label: "Daily AED + emergency equipment check log running", qty: "—" },
+  { phase: "7", section: "Staff certifications", label: "All clinical staff BCLS-current", qty: "—", critical: true },
+  { phase: "7", section: "Staff certifications", label: "Physicians ACLS-current", qty: "—" },
+  { phase: "7", section: "Staff certifications", label: "All staff HBV-vaccinated", qty: "—" },
+  { phase: "7", section: "Staff certifications", label: "All staff N95 fit-tested", qty: "—" },
+  { phase: "7", section: "Staff certifications", label: "All staff IPC fundamentals quiz passed (≥80%)", qty: "—" },
+  { phase: "7", section: "Drills", label: "Mock code drill conducted (SOP-006: twice yearly)", qty: "—" },
+  { phase: "7", section: "Documentation", label: "All 7 SOPs printed, signed by Clinical QA Manager, version-controlled binder at reception", qty: "—" },
+];
+
+function slug(s) {
+  return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60);
+}
+ITEMS.forEach((it, i) => { it.id = `${it.phase}-${slug(it.label)}-${i}`; });
+
+// ============ STATE ============
+let checks = new Map();         // item_id -> { checked_by, checked_at }
+let activeFilter = 'all';
+let realtimeChannel = null;
+
+// ============ AUTH UI ============
+const $ = (id) => document.getElementById(id);
+const overlay = $('authOverlay');
+
+function showAuthStatus(text, kind='info') {
+  const el = $('authStatus');
+  el.textContent = text;
+  el.className = 'auth-status ' + kind;
+  el.style.display = 'block';
+}
+function hideAuthStatus() { $('authStatus').style.display = 'none'; }
+
+$('sendCodeBtn').onclick = async () => {
+  $('sendCodeBtn').disabled = true;
+  showAuthStatus('Sending login code…', 'info');
+  const { error } = await supa.auth.signInWithOtp({
+    email: TEAM_EMAIL,
+    options: { shouldCreateUser: true }
+  });
+  $('sendCodeBtn').disabled = false;
+  if (error) { showAuthStatus('Error: ' + error.message, 'error'); return; }
+  $('authStep1').style.display = 'none';
+  $('authStep2').style.display = 'block';
+  showAuthStatus('Code sent. Check the inbox.', 'success');
+  setTimeout(() => $('otpInput').focus(), 100);
+};
+
+$('verifyBtn').onclick = async () => {
+  const token = $('otpInput').value.trim();
+  if (token.length < 6) { showAuthStatus('Enter the 6-digit code.', 'error'); return; }
+  $('verifyBtn').disabled = true;
+  showAuthStatus('Verifying…', 'info');
+  const { error } = await supa.auth.verifyOtp({ email: TEAM_EMAIL, token, type: 'email' });
+  $('verifyBtn').disabled = false;
+  if (error) { showAuthStatus('Invalid or expired. Try again.', 'error'); return; }
+  hideAuthStatus();
+  hideAuthOverlay();
+  await onAuthed();
+};
+
+$('resendBtn').onclick = () => {
+  $('authStep2').style.display = 'none';
+  $('authStep1').style.display = 'block';
+  hideAuthStatus();
+};
+
+$('logoutBtn').onclick = async () => {
+  await supa.auth.signOut();
+  if (realtimeChannel) await supa.removeChannel(realtimeChannel);
+  checks.clear();
+  showAuthOverlay();
+};
+
+function showAuthOverlay() { overlay.style.display = 'flex'; document.body.classList.add('locked'); }
+function hideAuthOverlay() { overlay.style.display = 'none'; document.body.classList.remove('locked'); }
+
+// ============ DATA ============
+function setSync(text, kind) {
+  const el = $('syncIndicator');
+  el.textContent = text;
+  el.className = 'sync-indicator ' + (kind || '');
+}
+
+async function loadChecks() {
+  setSync('syncing…', 'syncing');
+  const { data, error } = await supa.from('clinic_checklist_checks').select('*');
+  if (error) { setSync('error', 'error'); console.error(error); return; }
+  checks = new Map(data.map(r => [r.item_id, { checked_by: r.checked_by, checked_at: r.checked_at }]));
+  setSync('synced', 'synced');
+}
+
+async function toggleItem(itemId) {
+  const wasChecked = checks.has(itemId);
+  setSync('saving…', 'syncing');
+  if (wasChecked) {
+    checks.delete(itemId);
+    renderAll();
+    const { error } = await supa.from('clinic_checklist_checks').delete().eq('item_id', itemId);
+    if (error) { setSync('error', 'error'); console.error(error); return; }
+  } else {
+    const session = await supa.auth.getSession();
+    const email = session.data.session?.user?.email || 'unknown';
+    checks.set(itemId, { checked_by: email, checked_at: new Date().toISOString() });
+    renderAll();
+    const { error } = await supa.from('clinic_checklist_checks').upsert({
+      item_id: itemId, checked_by: email, checked_at: new Date().toISOString()
+    });
+    if (error) { setSync('error', 'error'); console.error(error); return; }
+  }
+  setSync('synced', 'synced');
+}
+
+function subscribeRealtime() {
+  if (realtimeChannel) supa.removeChannel(realtimeChannel);
+  realtimeChannel = supa.channel('clinic-checks')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'clinic_checklist_checks' }, (payload) => {
+      if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+        checks.set(payload.new.item_id, { checked_by: payload.new.checked_by, checked_at: payload.new.checked_at });
+      } else if (payload.eventType === 'DELETE') {
+        checks.delete(payload.old.item_id);
+      }
+      renderAll();
+    })
+    .subscribe();
+}
+
+// ============ RENDER ============
+function counts() {
+  const total = ITEMS.length;
+  const checked = ITEMS.filter(i => checks.has(i.id)).length;
+  return { total, checked };
+}
+function phaseCounts(phase) {
+  const items = ITEMS.filter(i => i.phase === phase);
+  return { total: items.length, checked: items.filter(i => checks.has(i.id)).length };
+}
+
+function renderProgress() {
+  const { total, checked } = counts();
+  const pct = total ? Math.round((checked / total) * 100) : 0;
+  $('progressBar').style.width = pct + '%';
+  $('progressCount').textContent = `${checked} / ${total}`;
+  $('progressPct').textContent = pct + '%';
+}
+
+function renderTabs() {
+  const phases = [
+    { key: 'all', label: 'All' },
+    { key: '1', label: 'Phase 1' },
+    { key: '2', label: 'Phase 2' },
+    { key: '3', label: 'Phase 3' },
+    { key: '4', label: 'Phase 4' },
+    { key: '5', label: 'Phase 5' },
+    { key: '6', label: 'Off-site' },
+    { key: '7', label: 'Punch list' },
+    { key: 'critical', label: '⭐ Critical' },
+    { key: 'unchecked', label: 'Unchecked' },
+  ];
+  const tabs = $('tabs');
+  tabs.innerHTML = '';
+  phases.forEach(p => {
+    const btn = document.createElement('button');
+    btn.className = 'tab' + (activeFilter === p.key ? ' active' : '');
+    let label = p.label;
+    if (['1','2','3','4','5','6','7'].includes(p.key)) {
+      const c = phaseCounts(p.key);
+      label += ` (${c.checked}/${c.total})`;
+    }
+    btn.textContent = label;
+    btn.onclick = () => { activeFilter = p.key; renderAll(); };
+    tabs.appendChild(btn);
+  });
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function renderList() {
+  const list = $('list');
+  list.innerHTML = '';
+  let visible = ITEMS;
+  if (activeFilter === 'critical') visible = ITEMS.filter(i => i.critical);
+  else if (activeFilter === 'unchecked') visible = ITEMS.filter(i => !checks.has(i.id));
+  else if (activeFilter !== 'all') visible = ITEMS.filter(i => i.phase === activeFilter);
+
+  if (!visible.length) {
+    list.innerHTML = '<div class="empty">Nothing here. Try another filter.</div>';
+    return;
+  }
+
+  let lastPhase = null, lastSection = null;
+  visible.forEach(it => {
+    if (it.phase !== lastPhase) {
+      const phaseObj = ITEMS.find(x => x.phase === it.phase && x.phaseLabel);
+      if (phaseObj) {
+        const ph = document.createElement('div');
+        ph.className = 'phase-header';
+        ph.textContent = phaseObj.phaseLabel;
+        list.appendChild(ph);
+      }
+      lastPhase = it.phase;
+      lastSection = null;
+    }
+    if (it.section !== lastSection) {
+      const st = document.createElement('div');
+      st.className = 'section-title';
+      st.textContent = it.section;
+      list.appendChild(st);
+      lastSection = it.section;
+    }
+    const isChecked = checks.has(it.id);
+    const row = document.createElement('div');
+    row.className = 'item' + (isChecked ? ' checked' : '') + (it.critical ? ' critical' : '');
+    row.innerHTML = `
+      <div class="checkbox"></div>
+      <div class="item-body">
+        <span class="label">${escapeHtml(it.label)}${it.critical ? '<span class="star">⭐</span>' : ''}</span>
+        <span class="qty">${escapeHtml(it.qty)}</span>
+      </div>
+    `;
+    row.onclick = () => toggleItem(it.id);
+    list.appendChild(row);
+  });
+}
+
+function renderAll() {
+  renderProgress();
+  renderTabs();
+  renderList();
+}
+
+// ============ EXPORT ============
+$('exportBtn').onclick = () => {
+  const { total, checked } = counts();
+  const lines = [
+    `# AHP Clinic Procurement — ${new Date().toISOString().slice(0,10)}`,
+    `Progress: ${checked}/${total} (${Math.round(checked/total*100)}%)`,
+    ''
+  ];
+  let lastPhase = null, lastSection = null;
+  ITEMS.forEach(it => {
+    if (it.phase !== lastPhase) {
+      lines.push(''); lines.push('## ' + (it.phaseLabel || `Phase ${it.phase}`));
+      lastPhase = it.phase; lastSection = null;
+    }
+    if (it.section !== lastSection) {
+      lines.push(''); lines.push('### ' + it.section);
+      lastSection = it.section;
+    }
+    const box = checks.has(it.id) ? '[x]' : '[ ]';
+    const star = it.critical ? ' ⭐' : '';
+    lines.push(`- ${box} ${it.label} — ${it.qty}${star}`);
+  });
+  const blob = new Blob([lines.join('\n')], {type: 'text/markdown'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `ahp-checklist-${new Date().toISOString().slice(0,10)}.md`;
+  a.click();
+  URL.revokeObjectURL(url);
+};
+
+// ============ BOOT ============
+async function onAuthed() {
+  await loadChecks();
+  subscribeRealtime();
+  renderAll();
+}
+
+(async () => {
+  renderTabs(); renderList(); renderProgress();
+  const { data: { session } } = await supa.auth.getSession();
+  if (session) {
+    hideAuthOverlay();
+    await onAuthed();
+  } else {
+    showAuthOverlay();
+  }
+  supa.auth.onAuthStateChange(async (event, sess) => {
+    if (event === 'SIGNED_OUT') showAuthOverlay();
+  });
+})();
+</script>
+</body>
+</html>

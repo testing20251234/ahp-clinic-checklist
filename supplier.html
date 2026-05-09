@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AHP Clinic — Supplier RFQ</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #161922;
+    --surface-2: #1d212c;
+    --border: #262b38;
+    --text: #e7eaf0;
+    --text-dim: #8b93a7;
+    --accent: #6ea8ff;
+    --accent-dim: #3a557a;
+    --done: #4ade80;
+    --critical: #f87171;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 14px 16px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  header a {
+    color: var(--text-dim);
+    text-decoration: none;
+    font-size: 13px;
+    padding: 6px 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+  }
+  header a:hover { color: var(--text); border-color: var(--accent-dim); }
+  header h1 { margin: 0; font-size: 18px; flex: 1; }
+  header h1 .sub { color: var(--text-dim); font-weight: 400; font-size: 13px; margin-left: 6px; }
+
+  main {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 16px 16px 100px;
+  }
+
+  .preamble {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-size: 13px;
+    color: var(--text-dim);
+    margin-bottom: 18px;
+  }
+  .preamble strong { color: var(--text); }
+
+  h2 {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    color: var(--accent);
+    margin: 22px 0 10px;
+    font-weight: 600;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 8px;
+  }
+  thead th {
+    background: var(--surface-2);
+    color: var(--text-dim);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    font-weight: 600;
+    padding: 10px 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  thead th.num { width: 36px; text-align: center; }
+  thead th.qty { width: 110px; text-align: right; }
+  tbody td {
+    padding: 12px;
+    border-bottom: 1px solid var(--border);
+    font-size: 14px;
+    vertical-align: top;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  td.num {
+    text-align: center;
+    color: var(--text-dim);
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    width: 36px;
+  }
+  td.qty {
+    text-align: right;
+    color: var(--done);
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    white-space: nowrap;
+    width: 110px;
+  }
+  td.item .alt {
+    display: block;
+    color: var(--text-dim);
+    font-size: 12px;
+    margin-top: 2px;
+  }
+
+  .requirements {
+    margin-top: 18px;
+    padding: 12px 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 13px;
+  }
+  .requirements ul { margin: 6px 0 0 18px; padding: 0; color: var(--text-dim); }
+  .requirements li { margin: 4px 0; }
+  .requirements strong { color: var(--text); }
+
+  .source {
+    margin-top: 16px;
+    font-size: 12px;
+    color: var(--text-dim);
+    text-align: center;
+  }
+  .source a { color: var(--accent); text-decoration: none; }
+  .source a:hover { text-decoration: underline; }
+
+  .copybar {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: var(--bg);
+    border-top: 1px solid var(--border);
+    padding: 10px 16px env(safe-area-inset-bottom);
+    display: flex; gap: 8px;
+    z-index: 10;
+  }
+  .copybar button {
+    flex: 1;
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .copybar button.primary {
+    background: var(--accent);
+    color: #0c1220;
+    border-color: var(--accent);
+  }
+  .copybar button:hover { opacity: 0.9; }
+  .copybar button.copied {
+    background: var(--done);
+    color: #0c1220;
+    border-color: var(--done);
+  }
+
+  @media (min-width: 720px) {
+    h1 { font-size: 20px; }
+    tbody td { font-size: 15px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <a href="./">← Checklist</a>
+  <h1>Supplier RFQ <span class="sub">— AHP Clinic</span></h1>
+</header>
+
+<main>
+  <div class="preamble">
+    <strong>A Healthy People Clinic Pte. Ltd.</strong> — Outpatient Medical Service (UEN&nbsp;202427915M, Singapore). RFQ for HCSA-mandated minimum drugs &amp; equipment per Licence Conditions for Emergency Life Saving Measures, Annex A.
+  </div>
+
+  <h2>Drugs</h2>
+  <table>
+    <thead>
+      <tr><th class="num">#</th><th>Item</th><th class="qty">Qty</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="num">1</td>
+        <td class="item">Adrenaline (Epinephrine) 1:1000 (1&nbsp;mg/mL) ampoule</td>
+        <td class="qty">10</td>
+      </tr>
+      <tr>
+        <td class="num">2</td>
+        <td class="item">Injection antihistamine
+          <span class="alt">any one of: Diphenhydramine 50&nbsp;mg/mL · Chlorpheniramine (Piriton) · Promethazine (Phenergan)</span>
+        </td>
+        <td class="qty">5</td>
+      </tr>
+      <tr>
+        <td class="num">3</td>
+        <td class="item">Hydrocortisone 100&nbsp;mg vial <span class="alt">injection steroid</span></td>
+        <td class="qty">5</td>
+      </tr>
+      <tr>
+        <td class="num">4</td>
+        <td class="item">Salbutamol nebule 2.5&nbsp;mg / 2.5&nbsp;mL <span class="alt">inhaled bronchodilator</span></td>
+        <td class="qty">10</td>
+      </tr>
+      <tr>
+        <td class="num">5</td>
+        <td class="item">IV Normal Saline 0.9% <span class="alt">500&nbsp;mL bag</span></td>
+        <td class="qty">6</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Equipment</h2>
+  <table>
+    <thead>
+      <tr><th class="num">#</th><th>Item</th><th class="qty">Qty</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="num">6</td>
+        <td class="item">Bag-valve-mask resuscitator <span class="alt">e.g. Airviva — adult set + paediatric set</span></td>
+        <td class="qty">2 sets</td>
+      </tr>
+      <tr>
+        <td class="num">7</td>
+        <td class="item">Oropharyngeal (Guedel) airways <span class="alt">sizes 0, 1, 2, 3, 4, 5</span></td>
+        <td class="qty">1 each</td>
+      </tr>
+      <tr>
+        <td class="num">8</td>
+        <td class="item">Bronchodilator delivery / spacer <span class="alt">adult + paediatric</span></td>
+        <td class="qty">2</td>
+      </tr>
+      <tr>
+        <td class="num">9</td>
+        <td class="item">IV cannulas <span class="alt">18G, 20G, 22G, 24G</span></td>
+        <td class="qty">1 box each</td>
+      </tr>
+      <tr>
+        <td class="num">10</td>
+        <td class="item">IV giving / infusion sets <span class="alt">standard + macro drip</span></td>
+        <td class="qty">1 box each</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="requirements">
+    <strong>Quote requirements</strong>
+    <ul>
+      <li>All medical devices <strong>HSA-registered</strong> (Health Sciences Authority Singapore)</li>
+      <li>All drugs <strong>HSA-licensed</strong> with valid expiry; cold-chain items via validated transport</li>
+      <li>Itemised pricing, brand / model, drug lot expiry dates, lead time, total inc. GST</li>
+      <li>Delivery address: confirm with us</li>
+    </ul>
+  </div>
+
+  <div class="source">
+    Compliance basis: <a href="https://isomer-user-content.by.gov.sg/7/c9eb5682-75e3-4537-b017-93f6a6768eef/lcs-on-emergency-life-saving-measures_1-0.pdf" target="_blank" rel="noopener">HCSA Licence Conditions for Emergency Life Saving Measures</a>, Annex A row&nbsp;1 (Outpatient Medical Service).
+  </div>
+</main>
+
+<div class="copybar">
+  <button id="copyWa" class="primary">Copy for WhatsApp</button>
+  <button id="copyPlain">Copy plain text</button>
+</div>
+
+<script>
+const WA_TEXT = `*AHP Clinic — RFQ (HCSA OMS minimum)*
+
+*Drugs*
+1. Adrenaline 1:1000 (1mg/mL) ampoule — 10
+2. Injection antihistamine (Diphenhydramine 50mg/mL OR Chlorpheniramine/Piriton OR Promethazine/Phenergan) — 5
+3. Hydrocortisone 100mg vial — 5
+4. Salbutamol nebule 2.5mg/2.5mL — 10
+5. IV Normal Saline 0.9% 500mL bag — 6
+
+*Equipment*
+6. Bag-valve-mask (Airviva) — adult + paediatric — 2 sets
+7. Oropharyngeal (Guedel) airways sizes 0, 1, 2, 3, 4, 5 — 1 each
+8. Bronchodilator spacer (adult + paediatric) — 2
+9. IV cannulas 18G, 20G, 22G, 24G — 1 box each
+10. IV giving sets (standard + macro) — 1 box each
+
+*Quote please:* itemised pricing, brand/model, drug lot expiry, lead time, total inc. GST. All devices HSA-registered, drugs HSA-licensed.
+
+Compliance basis: HCSA ELSM Licence Conditions Annex A (Outpatient Medical Service).`;
+
+const PLAIN_TEXT = WA_TEXT.replace(/\*/g, '');
+
+async function copyText(btn, text) {
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch (e) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    ta.remove();
+  }
+  const original = btn.textContent;
+  btn.textContent = 'Copied ✓';
+  btn.classList.add('copied');
+  setTimeout(() => {
+    btn.textContent = original;
+    btn.classList.remove('copied');
+  }, 1800);
+}
+
+document.getElementById('copyWa').onclick = (e) => copyText(e.currentTarget, WA_TEXT);
+document.getElementById('copyPlain').onclick = (e) => copyText(e.currentTarget, PLAIN_TEXT);
+</script>
+</body>
+</html>

@@ -145,7 +145,23 @@
   .item-body { flex: 1; min-width: 0; }
   .label { font-size: 14px; color: var(--text); }
   .label .star { color: var(--critical); margin-left: 4px; font-size: 11px; }
-  .label .moh { color: var(--accent); margin-left: 4px; font-size: 11px; }
+  .label .moh {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 1px 6px;
+    background: rgba(74, 222, 128, 0.15);
+    color: var(--done);
+    border: 1px solid rgba(74, 222, 128, 0.4);
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    vertical-align: 2px;
+  }
+  .item.moh-required {
+    border-left: 3px solid var(--done);
+  }
+  .item.moh-required.checked { border-left-color: rgba(74, 222, 128, 0.4); }
   .qty {
     display: inline-block;
     margin-left: 8px;
@@ -219,7 +235,7 @@
 
 <main>
   <div class="legend">
-    <strong>Synced across devices</strong> &nbsp;·&nbsp; <span class="star">⭐</span> = inspection-critical &nbsp;·&nbsp; 🏛 = MOH-mandated minimum (HCSA ELSM Annex A) &nbsp;·&nbsp; tap a row to tick
+    <strong>Synced across devices</strong> &nbsp;·&nbsp; <span class="moh" style="margin-left:0">MOH</span> = required by MOH (HCSA ELSM Annex A) &nbsp;·&nbsp; <span class="star">⭐</span> = inspection-critical &nbsp;·&nbsp; tap a row to tick
   </div>
   <div id="list"></div>
 </main>
@@ -466,7 +482,7 @@ function slug(s) {
 ITEMS.forEach((it) => { it.id = `${it.phase}-${slug(it.label)}`; });
 
 let state = {};
-let activeFilter = 'all';
+let activeFilter = 'moh';
 
 const $ = (id) => document.getElementById(id);
 
@@ -534,8 +550,8 @@ function renderProgress() {
 
 function renderTabs() {
   const phases = [
+    { key: 'moh', label: 'MOH required' },
     { key: 'all', label: 'All' },
-    { key: 'moh', label: '🏛 MOH minimum' },
     { key: '0', label: 'Phase 0 (licensing)' },
     { key: '1', label: 'Phase 1' },
     { key: '2', label: 'Phase 2' },
@@ -573,15 +589,22 @@ function escapeHtml(s) {
 
 function renderList() {
   const list = $('list');
-  list.innerHTML = '';
   let visible = ITEMS;
-  if (activeFilter === 'critical') visible = ITEMS.filter(i => i.critical);
-  else if (activeFilter === 'moh') visible = ITEMS.filter(i => i.mohMandated);
+  let bannerHtml = '';
+  if (activeFilter === 'moh') {
+    visible = ITEMS.filter(i => i.mohMandated);
+    bannerHtml = `<div class="legend" style="border-left-color: var(--done); margin-bottom: 14px;">
+      <strong style="color:var(--done)">MOH-required only</strong> · ${visible.length} items the regulator strictly requires (Phase 0 licensing + HCSA ELSM Annex A drugs &amp; equipment). Get these and you clear the inspection minimum.
+    </div>`;
+  }
+  else if (activeFilter === 'critical') visible = ITEMS.filter(i => i.critical);
   else if (activeFilter === 'unchecked') visible = ITEMS.filter(i => !state[i.id]);
   else if (activeFilter !== 'all') visible = ITEMS.filter(i => i.phase === activeFilter);
 
+  if (bannerHtml) list.innerHTML = bannerHtml;
+
   if (!visible.length) {
-    list.innerHTML = '<div class="empty">Nothing here. Try another filter.</div>';
+    list.innerHTML += '<div class="empty">Nothing here. Try another filter.</div>';
     return;
   }
 
@@ -607,11 +630,11 @@ function renderList() {
     }
     const checked = !!state[it.id];
     const row = document.createElement('div');
-    row.className = 'item' + (checked ? ' checked' : '') + (it.critical ? ' critical' : '');
+    row.className = 'item' + (checked ? ' checked' : '') + (it.critical ? ' critical' : '') + (it.mohMandated ? ' moh-required' : '');
     row.innerHTML = `
       <div class="checkbox"></div>
       <div class="item-body">
-        <span class="label">${escapeHtml(it.label)}${it.mohMandated ? '<span class="moh">🏛</span>' : ''}${it.critical ? '<span class="star">⭐</span>' : ''}</span>
+        <span class="label">${escapeHtml(it.label)}${it.mohMandated ? '<span class="moh">MOH</span>' : ''}${it.critical ? '<span class="star">⭐</span>' : ''}</span>
         <span class="qty">${escapeHtml(it.qty)}</span>
       </div>
     `;
